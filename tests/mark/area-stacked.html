@@ -30,7 +30,8 @@ vis.add(pv.Layout.Stack)
     .layers(data)
     .x(function(d) x(d.x))
     .y(function(d) y(d.y))
-  .layer.add(pv.Area);
+.layer.add(pv.Area)
+    .left (function (d) { console.log(this, arguments); return x(d.x); });
 
 vis.add(pv.Rule)
     .data(x.ticks())

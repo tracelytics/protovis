@@ -226,7 +226,8 @@ svgnsFake = 'urn:__fake__internal__namespace';
  
 // browser detection adapted from Dojo
 var isOpera = false, isSafari = false, isMoz = false, isIE = false, 
-    isAIR = false, isKhtml = false, isFF = false, isXHTML = false;
+    isAIR = false, isKhtml = false, isFF = false, isXHTML = false,
+    isChrome = false;
     
 function _detectBrowsers() {
   var n = navigator,
@@ -255,6 +256,7 @@ function _detectBrowsers() {
   if (document.all && !isOpera) {
     isIE = parseFloat(dav.split('MSIE ')[1]) || undefined;
   }
+  if (dua.indexOf('Chrome') >= 0) { isChrome = 1; }
 
   // compatMode deprecated on IE8 in favor of documentMode
   if (document.documentMode) {
@@ -1682,7 +1684,7 @@ extend(SVGWeb, {
       }
       
       // capture anything between > and < tags
-      pieces[1] = pieces[1].replace(/>([^>]+)</g, '><__text>$1</__text><');
+      pieces[1] = pieces[1].replace(/>([^<]+)</g, '><__text>$1</__text><');
       
       // re-assemble our CDATA blocks
       if (hasCData) {
@@ -2055,7 +2057,7 @@ extend(SVGWeb, {
     for (var i = 0; i < svgweb.handlers.length; i++) {      
       if (svgweb.handlers[i].type == 'object') {
         var removeMe = svgweb.handlers[i].flash;
-        if (removeMe.parentNode) { // attachment may have been interrupted
+        if (removeMe && removeMe.parentNode) { // attachment may have been interrupted
           svgweb.removeChild(removeMe, removeMe.parentNode);
         }
       } else {
@@ -2173,14 +2175,14 @@ extend(SVGWeb, {
     if (window.addEventListener) {
       window._addEventListener = window.addEventListener;
       window.addEventListener = function(type, f, useCapture) {
-        if (type.toLowerCase() != 'svgload') {
-          return window._addEventListener(type, f, useCapture);
-        } else {
+        if (type.toLowerCase() == 'svgload') {
           svgweb.addOnLoad(f);
+        } else {
+          return window._addEventListener(type, f, useCapture);
         }
       }
     } else {
-      // patch in addEventListener just for the svgload event
+      // patch in addEventListener for IE!
       window.addEventListener = function(type, f, useCapture) {
         if (type.toLowerCase() == 'svgload') {
           svgweb.addOnLoad(f);
@@ -2195,13 +2197,14 @@ extend(SVGWeb, {
     if (isIE && window.attachEvent) {
       window._attachEvent = window.attachEvent;
       window.attachEvent = function(type, f) {
-        if (type.toLowerCase() != 'onsvgload') {
-          return window._attachEvent(type, f);
-        } else {
+        if (type.toLowerCase() == 'onsvgload') {
           svgweb.addOnLoad(f);
+        } else {
+          return window._attachEvent(type, f);
         }
       }
     }
+
   },
   
   _saveWindowOnload: function() {
@@ -2509,6 +2512,10 @@ function FlashHandler(args) {
   }
 }
 
+// Track keyboard listeners on the top level document in case
+// flash traps any keyboard events.
+FlashHandler._keyboardListeners = [];
+
 // start of 'static' singleton functions and properties
 
 // when someone calls createElementNS or createTextNode we are not attached
@@ -2568,10 +2575,10 @@ FlashHandler._getNode = function(nodeXML, handler) {
   if (!node && !fakeTextNode && nodeXML.nodeType == _Node.ELEMENT_NODE) {
     // never seen before -- we'll have to create a new _Element now
     node = new _Element(nodeXML.nodeName, nodeXML.prefix, 
-                        nodeXML.namespaceURI, nodeXML, handler, true);
+                        nodeXML.namespaceURI, nodeXML, handler);
   } else if (!node && (nodeXML.nodeType == _Node.TEXT_NODE || fakeTextNode)) {
     node = new _Node('#text', _Node.TEXT_NODE, null, null, nodeXML,
-                     handler, false);
+                     handler);
   } else if (!node) {
     throw new Error('Unknown node type given to _getNode: ' 
                     + nodeXML.nodeType);
@@ -2591,26 +2598,79 @@ FlashHandler._patchBrowserObjects = function(win, doc) {
   // Instead, we capture the original versions on the document object
   // itself but with a _ prefix.
   
-  document._getElementById = document.getElementById;
-  document.getElementById = FlashHandler._getElementById;
+  doc._getElementById = doc.getElementById;
+  doc.getElementById = FlashHandler._getElementById;
   
-  document._getElementsByTagNameNS = document.getElementsByTagNameNS;
-  document.getElementsByTagNameNS = FlashHandler._getElementsByTagNameNS;
+  doc._getElementsByTagNameNS = doc.getElementsByTagNameNS;
+  doc.getElementsByTagNameNS = FlashHandler._getElementsByTagNameNS;
   
-  document._createElementNS = document.createElementNS;
-  document.createElementNS = FlashHandler._createElementNS;
+  doc._createElementNS = doc.createElementNS;
+  doc.createElementNS = FlashHandler._createElementNS;
   
-  document._createElement = document.createElement;
-  document.createElement = FlashHandler._createElement;
+  doc._createElement = doc.createElement;
+  doc.createElement = FlashHandler._createElement;
     
-  document._createTextNode = document.createTextNode;
-  document.createTextNode = FlashHandler._createTextNode;
+  doc._createTextNode = doc.createTextNode;
+  doc.createTextNode = FlashHandler._createTextNode;
   
-  document._importNodeFunc = FlashHandler._importNodeFunc;
+  doc._importNodeFunc = FlashHandler._importNodeFunc;
   
-  document._createDocumentFragment = document.createDocumentFragment;
-  document.createDocumentFragment = FlashHandler._createDocumentFragment;
+  doc._createDocumentFragment = doc.createDocumentFragment;
+  doc.createDocumentFragment = FlashHandler._createDocumentFragment;
+
+  doc._addEventListener = doc.addEventListener;
+  doc.addEventListener = FlashHandler._addEventListener;
 };
+
+
+/** Patches the fake window and document object "inside" an SVG loaded with object tag */
+/* Implemented for FlashHandler only */
+FlashHandler._patchFakeObjects = function(win, doc) {
+  doc._addEventListener = doc.addEventListener;
+  doc.addEventListener = FlashHandler._addEventListener;
+};
+
+
+FlashHandler._addEventListener = function(type, listener, useCapture) {
+
+  if (type == 'keydown') {
+    // prevent closure by using an inline method
+    var wrappedListener = (function(listener) {
+                              return function(evt) {
+                                // shim in preventDefault function for IE
+                                if (!evt.preventDefault) {
+                                  evt.preventDefault = function() {
+                                    this.returnValue = false;
+                                    evt = null;
+                                  }
+                                }
+                                // call the developer's listener now
+                                if (typeof listener == 'object') {
+                                  listener.handleEvent.call(listener, evt);
+                                } else {
+                                  listener(evt);
+                                }
+                              }
+                            })(listener);
+    // persist information about this listener so we can easily remove
+    // it later
+    wrappedListener.__type = type;
+    wrappedListener.__listener = listener;
+    wrappedListener.__useCapture = useCapture; 
+    
+    // save keyboard listeners for later so we can clean them up
+    // later if the parent SVG document is removed from the DOM
+    if (this._handler) {
+      this._handler._keyboardListeners.push(wrappedListener);
+    } else {
+      FlashHandler._keyboardListeners.push(wrappedListener);
+    }
+  }
+  if (this._addEventListener) {
+    this._addEventListener(type, listener, useCapture);
+  }
+}
+
 
 /** Our implementation of getElementById, which we patch into the 
     document object. We do it here to prevent a closure and therefore
@@ -3104,6 +3164,9 @@ extend(FlashHandler, {
     if (msg.eventType.substr(0, 5) == 'mouse' || msg.eventType == 'click') {
       this._onMouseEvent(msg);
       return;
+    } else if (msg.eventType == 'keydown') {
+      this._onKeyboardEvent(msg);
+      return;
     } else if (msg.eventType == 'onRenderingFinished') {
       if (this.type == 'script') {
         this.document.documentElement._onRenderingFinished(msg);
@@ -3215,6 +3278,78 @@ extend(FlashHandler, {
     }
   },
 
+  _onKeyboardEvent: function(msg) {
+    //console.log('_onKeyEvent, msg='+this.debugMsg(msg));
+    var target = this._getElementByGuid(msg.targetGUID);
+    var currentTarget = this._getElementByGuid(msg.currentTargetGUID);
+    var evt = { target: target._getProxyNode(),
+                currentTarget: currentTarget._getProxyNode(),
+                type: msg.eventType,
+                keyCode: Number(msg.keyCode),
+                altKey: msg.altKey,
+                ctrlKey: msg.ctrlKey,
+                shiftKey: msg.shiftKey,
+                preventDefault: function() { this.returnValue=false; },
+                stopPropagation: function() { /* TODO */ }
+              };
+
+    // If the svg is inline, call all the top document level
+    // keyboard listeners 
+    if (this.type == 'script') {
+      for (var i = 0; i < FlashHandler._keyboardListeners.length; i++) {
+        var listener = FlashHandler._keyboardListeners[i];
+        if ( (isFF || isChrome) && 
+             this.flash.getAttribute('wmode') == 'transparent' ) {
+          // Under this circumstance, the browser also passes the keystroke
+          // to any document listener, so we do not need to simulate it.
+          // In other words, flash does not eat the keystroke here.
+          continue;
+        }
+        listener.call(evt.currentTarget, evt);
+      }
+    }
+    // Call any svg document or element keyboard listeners.
+    var listeners = this._keyboardListeners;
+    for (var i = 0; i < listeners.length; i++) {
+      var listener = listeners[i];
+      listener.call(evt.currentTarget, evt);
+    }
+  },
+
+
+  // This is used by elements that listen to the keyboard.
+  // Documents that listen use the FlashHandler.addKeyboardListener
+  addKeyboardListener: function(type, listener, useCapture) {
+      // prevent closure by using an inline method
+      var wrappedListener = (function(listener) {
+                                return function(evt) {
+                                  // shim in preventDefault function for IE
+                                  if (!evt.preventDefault) {
+                                    evt.preventDefault = function() {
+                                      this.returnValue = false;
+                                      evt = null;
+                                    }
+                                  }
+                                  // call the developer's listener now
+                                  if (typeof listener == 'object') {
+                                    listener.handleEvent.call(listener, evt);
+                                  } else {
+                                    listener(evt);
+                                  }
+                                }
+                              })(listener);
+      // persist information about this listener so we can easily remove
+      // it later
+      wrappedListener.__type = type;
+      wrappedListener.__listener = listener;
+      wrappedListener.__useCapture = useCapture; 
+      
+      // save keyboard listeners for later so we can clean them up
+      // later if the parent SVG document is removed from the DOM
+      this._keyboardListeners.push(wrappedListener);
+      return;
+  },
+
   _getElementByGuid: function(guid) {
     var node = svgweb._guidLookup['_' + guid];
     if (node) {
@@ -3243,7 +3378,8 @@ extend(FlashHandler, {
     if(isIE && node._fakeNode) {
         node = node._fakeNode;
     }
-    node._passThrough = true;
+    // _getElementByGuid is called for mouse events, assume element is attached
+    node._attached = true;
     
     return node;
   },
@@ -4133,8 +4269,7 @@ extend(_DOMImplementation, {
 // Note: Only element, text nodes, document nodes, and document fragment nodes
 // are supported for now. We don't parse and retain comments, processing 
 // instructions, etc. CDATA nodes are turned into text nodes.
-function _Node(nodeName, nodeType, prefix, namespaceURI, nodeXML, handler, 
-               passThrough) {
+function _Node(nodeName, nodeType, prefix, namespaceURI, nodeXML, handler) {
   if (nodeName === undefined && nodeType === undefined) {
     // prototype subclassing
     return;
@@ -4154,15 +4289,9 @@ function _Node(nodeName, nodeType, prefix, namespaceURI, nodeXML, handler,
     namespaceURI = svgns;
   }
   
-  // determine whether we are attached
-  this._attached = true;
-  if (!this._handler) {
-    this._attached = false;
-  }
-  
   // handle nodes that were created with createElementNS but are not yet
   // attached to the document yet
-  if (nodeType == _Node.ELEMENT_NODE && !this._nodeXML && !this._handler) {
+  if (nodeType == _Node.ELEMENT_NODE && !this._nodeXML) {
     // build up an empty XML node for this element
     var xml = '<?xml version="1.0"?>\n';
     if (namespaceURI == svgns && !prefix) {
@@ -4230,14 +4359,9 @@ function _Node(nodeName, nodeType, prefix, namespaceURI, nodeXML, handler,
   // set to 'document'
   this.ownerDocument = document;
   // if we are an SVG OBJECT set to our fake pseudo _Document
-  if (this._attached && this._handler.type == 'object') {
+  if (this._handler && this._handler.type == 'object') {
     this.ownerDocument = this._handler.document;
   }
-  
-  if (passThrough === undefined) {
-    passThrough = false;
-  }
-  this._passThrough = passThrough;
   
   // create empty stub methods for certain methods to help IE's HTC be
   // smaller, which has a very strong affect on performance
@@ -4354,8 +4478,7 @@ extend(_Node, {
     for (var i = 0; i < importMe.length; i++) {
       var importedNode = this._importNode(importMe[i], false);
       this._nodeXML.insertBefore(importedNode, refChild._nodeXML);
-      this._processAppendedChildren(importMe[i], this, this._attached, 
-                                    this._passThrough);
+      this._processAppendedChildren(importMe[i], this, this._attached);
     }
     
     // inform Flash about the change
@@ -4378,8 +4501,10 @@ extend(_Node, {
     // clear out the child if it is a DocumentFragment
     if (newChild.nodeType == _Node.DOCUMENT_FRAGMENT_NODE) {
       newChild._reset();
+    } else {
+      newChild._attached = this._attached;
     }
-    
+
     return newChild._getProxyNode();
   },
   
@@ -4482,8 +4607,7 @@ extend(_Node, {
     }
     
     // now process the newChild's node
-    this._processAppendedChildren(newChild, this, this._attached, 
-                                  this._passThrough);
+    this._processAppendedChildren(newChild, this, this._attached);
     
     // recursively set the removed node to be unattached and to not
     // pass through changes to Flash anymore
@@ -4495,6 +4619,8 @@ extend(_Node, {
     // clear out the child if it is a DocumentFragment
     if (newChild.nodeType == _Node.DOCUMENT_FRAGMENT_NODE) {
       newChild._reset();
+    } else {
+      newChild._attached = this._attached;
     }
     
     return oldChild._getProxyNode();
@@ -4653,12 +4779,13 @@ extend(_Node, {
     }
 
     // process the children (cache important info, add a handler, etc.)
-    this._processAppendedChildren(child, this, this._attached, 
-                                  this._passThrough);
+    this._processAppendedChildren(child, this, this._attached);
 
     // clear out the child if it is a DocumentFragment
     if (child.nodeType == _Node.DOCUMENT_FRAGMENT_NODE) {
       child._reset();
+    } else {
+      child._attached = this._attached;
     }
 
     return child._getProxyNode();
@@ -4744,7 +4871,8 @@ extend(_Node, {
     // NOTE: capturing not supported
     
     if (this.nodeType != _Node.ELEMENT_NODE
-        && this.nodeType != _Node.TEXT_NODE) {
+        && this.nodeType != _Node.TEXT_NODE
+        && (this.nodeType != _Node.DOCUMENT_NODE || type != 'keydown')) {
       throw 'Not supported';
     }
     
@@ -4764,42 +4892,7 @@ extend(_Node, {
     this._listeners[type]['_' + listener.toString() + ':' + useCapture] = listener;
                                         
     if (type == 'keydown') {
-      // TODO: Be able to handle key events on individual SVG graphics 
-      // (g, rect, etc.) that might have focus
-      // TODO: FIXME: do we want to be adding this listener to 'document'
-      // when dealing with SVG OBJECTs?
-      
-      // prevent closure by using an inline method
-      var wrappedListener = (function(listener) {
-                                return function(evt) {
-                                  // shim in preventDefault function for IE
-                                  if (!evt.preventDefault) {
-                                    evt.preventDefault = function() {
-                                      this.returnValue = false;
-                                      evt = null;
-                                    }
-                                  }
-                                  // call the developer's listener now
-                                  if (typeof listener == 'object') {
-                                    listener.handleEvent.call(listener, evt);
-                                  } else {
-                                    listener(evt);
-                                  }
-                                }
-                              })(listener);
-      // persist information about this listener so we can easily remove
-      // it later
-      wrappedListener.__type = type;
-      wrappedListener.__listener = listener;
-      wrappedListener.__useCapture = useCapture; 
-      
-      // save keyboard listeners for later so we can clean them up
-      // later if the parent SVG document is removed from the DOM
-      this._handler._keyboardListeners.push(wrappedListener);
-      
-      // now actually subscribe to the event
-      this._addEvent(document, type, wrappedListener);
-      return;
+      this._handler.addKeyboardListener(type, listener, useCapture);
     }
 
     this._handler.sendToFlash('jsAddEventListener', [ this._guid, type ]);
@@ -5012,7 +5105,7 @@ extend(_Node, {
     
     // are we the root SVG node when being embedded by an SVG SCRIPT?
     // If _handler is not set, this element is a detached svg element.
-    if (this._handler &&
+    if (this._attached && this._handler &&
         this._getProxyNode() == this._handler.document.rootElement) {
       if (this._handler.type == 'script') {
         return this._handler.flash.parentNode;
@@ -5030,6 +5123,7 @@ extend(_Node, {
     }
     
     var node = FlashHandler._getNode(parentXML, this._handler);
+    this._getFakeNode(node)._attached = this._attached;
     
     return node;
   },
@@ -5045,7 +5139,7 @@ extend(_Node, {
     }
     
     var node = FlashHandler._getNode(childXML, this._handler);
-    this._getFakeNode(node)._passThrough = this._passThrough;
+    this._getFakeNode(node)._attached = this._attached;
         
     return node;
   },
@@ -5061,7 +5155,7 @@ extend(_Node, {
     }
     
     var node = FlashHandler._getNode(childXML, this._handler);
-    this._getFakeNode(node)._passThrough = this._passThrough;
+    this._getFakeNode(node)._attached = this._attached;
     
     return node;
   },
@@ -5074,7 +5168,7 @@ extend(_Node, {
     
     // are we the root SVG object when being embedded by an SVG SCRIPT?
     // If _handler is not set, this element is a nested svg element.
-    if (this._handler && 
+    if (this._attached && this._handler &&
         this._getProxyNode() == this._handler.document.rootElement
                       && this._handler.type == 'script') {
       var sibling = this._handler.flash.previousSibling;
@@ -5097,7 +5191,7 @@ extend(_Node, {
     }
     
     var node = FlashHandler._getNode(siblingXML, this._handler);
-    this._getFakeNode(node)._passThrough = this._passThrough;
+    this._getFakeNode(node)._attached = this._attached;
     
     return node;
   },
@@ -5110,7 +5204,7 @@ extend(_Node, {
       
     // are we the root SVG object when being embedded by an SVG SCRIPT?
     // If _handler is not set, this element is a nested svg element.
-    if (this._handler &&
+    if (this._attached && this._handler &&
         this._getProxyNode() == this._handler.document.rootElement
                       && this._handler.type == 'script') {
       var sibling = this._handler.flash.nextSibling;
@@ -5132,7 +5226,7 @@ extend(_Node, {
     }
     
     var node = FlashHandler._getNode(siblingXML, this._handler);
-    this._getFakeNode(node)._passThrough = this._passThrough;
+    this._getFakeNode(node)._attached = this._attached;
 
     return node;
   },
@@ -5143,22 +5237,17 @@ extend(_Node, {
   // TODO: It would be nice to support the ElementTraversal spec here as well
   // since it cuts down on code size:
   // http://www.w3.org/TR/ElementTraversal/
-  
-  /** The passthrough flag controls whether we 'pass through' any changes
-      to this object to the underlying Flash viewer. For example, if a
-      Node has been created but is not yet attached to the document, any 
-      changes to its attributes should not pass through to the Flash viewer,
-      and this flag would therefore be false. After the Node is attached
-      through appendChild(), passThrough would become true and everything
-      would get passed through to Flash for rendering. */
-  _passThrough: false,
+
+
+  /** A flag used to supress events to flash. **/
+  _passThrough: true,
   
   /** The attached flag indicates whether this node is attached to a live
       DOM yet. For example, if you call createElementNS, you can set
       values on this node before actually appending it using appendChild
       to a node that is connected to the actual visible DOM, ready to
       be rendered. */
-  _attached: true,
+  _attached: false,
   
   /** A flag we put on our _Nodes and _Elements to indicate they are fake;
       useful if someone wants to 'break' the abstraction and see if a node
@@ -5244,7 +5333,7 @@ extend(_Node, {
     this._childNodes.__defineGetter__(i, function() {
       var childXML = self._nodeXML.childNodes[i];
       var node = FlashHandler._getNode(childXML, self._handler);
-      node._passThrough = self._passThrough;
+      node._attached = self._attached;
       return node;
     });
   },
@@ -5294,7 +5383,7 @@ extend(_Node, {
       for (var i = 0; i < this._nodeXML.childNodes.length; i++) {
         var childXML = this._nodeXML.childNodes[i];
         var node = FlashHandler._getNode(childXML, this._handler);
-        node._fakeNode._passThrough = this._passThrough;
+        node._fakeNode._attached = this._attached;
         if (returnFakeNodes) {
           node = node._fakeNode;
         }
@@ -5394,11 +5483,9 @@ extend(_Node, {
       
       @param child _Node to work with.
       @param parent The parent of this child.
-      @param attached Boolean on whether we are attached or not yet.
-      @param passThrough Boolean on whether to pass values through
-      to Flash or not. */
-  _processAppendedChildren: function(child, parent, attached, passThrough) {
-    //console.log('processAppendedChildren, this.nodeName='+this.nodeName+', child.nodeName='+child.nodeName+', attached='+attached+', passThrough='+passThrough);
+      @param attached Boolean on whether we are attached or not yet. */
+  _processAppendedChildren: function(child, parent, attached) {
+    //console.log('processAppendedChildren, this.nodeName='+this.nodeName+', child.nodeName='+child.nodeName+', attached='+attached);
     // walk the DOM from the child using an iterative algorithm, which was 
     // found to be faster than a recursive one; for each node visited we will
     // store some important reference information
@@ -5410,7 +5497,7 @@ extend(_Node, {
       current = child;
     }
     // turn on suspendRedraw so adding our event handlers happens in one go
-    if (attached && passThrough) {
+    if (attached) {
       suspendID = this._handler._redrawManager.suspendRedraw(10000, false);
     }
 
@@ -5435,6 +5522,7 @@ extend(_Node, {
         } else if (this._handler.type == 'object') {
           current.ownerDocument = this._handler.document;
         }
+        current._attached = true;
 
         // register and send over any event listeners that were added while
         // this node was detached
@@ -5487,14 +5575,10 @@ extend(_Node, {
           }
         }
       }
-      
-      // set our attached information
-      lastVisited._attached = attached;
-      lastVisited._passThrough = passThrough;
     }
     
     // turn off suspendRedraw. all event handlers should shoot through now
-    if (attached && passThrough) {
+    if (attached) {
       this._handler._redrawManager.unsuspendRedraw(suspendID, false);
     }
   },
@@ -5620,7 +5704,7 @@ extend(_Node, {
   },
   
   /** After a node is unattached, such as through a removeChild, this method
-      recursively sets _attached and _passThrough to false on this node
+      recursively sets _attached to false on this node
       and all of its children.  */
   _setUnattached: function() {   
     // set each child to be unattached
@@ -5633,7 +5717,6 @@ extend(_Node, {
       child._setUnattached();
     }
     this._attached = false;
-    this._passThrough = false;
     this._handler = null;
   },
   
@@ -5795,10 +5878,8 @@ extend(_Node, {
     @param namespaceURI The namespace URI. If undefined, defaults to null.
     @param nodeXML The parsed XML DOM node for this element.
     @param handler The FlashHandler rendering this node. 
-    @param passThrough Optional boolean on whether any changes to this
     element 'pass through' and cause changes in the Flash renderer. */                 
-function _Element(nodeName, prefix, namespaceURI, nodeXML, handler, 
-                  passThrough) {
+function _Element(nodeName, prefix, namespaceURI, nodeXML, handler) {
   if (nodeName === undefined && namespaceURI === undefined 
       && nodeXML === undefined && handler === undefined) {
     // prototype subclassing
@@ -5807,7 +5888,7 @@ function _Element(nodeName, prefix, namespaceURI, nodeXML, handler,
   
   // superclass constructor
   _Node.apply(this, [nodeName, _Node.ELEMENT_NODE, prefix, namespaceURI, 
-                     nodeXML, handler, passThrough]);
+                     nodeXML, handler]);
                      
   // setup our attributes
   this._attributes = {};
@@ -5972,8 +6053,6 @@ extend(_Element, {
     }
     
     if (!attrNode) {
-      // JL (jamie love) Remove this warning, The way that protovis works
-      // means it is called a lot.
       //console.log('No attribute node found for: ' + localName
       //            + ' in the namespace: ' + ns);
       return;
@@ -6247,7 +6326,7 @@ extend(_Element, {
     var nodes = createNodeList();
     for (var i = 0; i < results.length; i++) {
       var elem = FlashHandler._getNode(results[i], this._handler);
-      elem._passThrough = true;
+      this._getFakeNode(elem)._attached = true;
       nodes.push(elem);
     }
     
@@ -6381,7 +6460,14 @@ extend(_Element, {
   createSVGRect: function() {
     return new _SVGRect(0, 0, 0, 0);
   },
-  
+
+  getBBox: function() {
+    var msg = this._handler.sendToFlash('jsGetBBox', [ this._guid ]);
+    msg = this._handler._stringToMsg(msg);
+    return new _SVGRect(new Number(msg.x), new Number(msg.y),
+                        new Number(msg.width), new Number(msg.height));
+  },
+
   /** Extracts the unit value and trims off the measurement type. For example, 
       if you pass in 14px, this method will return 14. Null will return null. */
   _trimMeasurement: function(value) {
@@ -6943,10 +7029,9 @@ extend(_Style, {
     // change our style value; however, don't pass this through to Flash
     // because Flash might not even know about our existence yet, because we
     // are still being run from the _Element constructor
-    var origPassThrough = this._element._passThrough;
     this._element._passThrough = false;
     this._element.setAttribute('style', results);
-    this._element._passThrough = origPassThrough;
+    this._element._passThrough = true;
   },
   
   /** For Internet Explorer, this method is called whenever a
@@ -7265,6 +7350,8 @@ extend(_SVGObject, {
     
     // our fake document object should point to our fake window object
     doc.defaultView = this._handler.window;
+    
+    FlashHandler._patchFakeObjects(doc.defaultView, doc);
     
     // add our onload handler to the list of scripts to execute at the
     // beginning
@@ -8456,8 +8543,9 @@ extend(FlashInserter, {
     SVG root element is being embedded by an SVG OBJECT.
     @param handler The FlashHandler that we are a part of. */
 function _SVGSVGElement(nodeXML, svgString, scriptNode, handler) {
+  this._attached = true;
   // superclass constructor
-  _Element.apply(this, ['svg', null, svgns, nodeXML, handler, true]);
+  _Element.apply(this, ['svg', null, svgns, nodeXML, handler]);
 
   this._nodeXML = nodeXML;
   this._svgString = svgString;
@@ -8554,7 +8642,6 @@ extend(_SVGSVGElement, {
   
   // TODO: Implement the following methods
   
-  getBBox: function() /* SVGRect */ {},
   getTransformToElement: function(element /* SVGElement */) /* SVGMatrix */ {
     /* throws SVGException */
   },
@@ -8762,7 +8849,7 @@ extend(_Document, {
       }
     }
 
-    var node = new _Element(qname, prefix, ns);
+    var node = new _Element(qname, prefix, ns, undefined, this._handler);
     
     return node._getProxyNode();
   },
@@ -8812,7 +8899,7 @@ extend(_Document, {
     
     // create or get an _Element for this XML DOM node for node
     node = FlashHandler._getNode(nodeXML, this._handler);
-    node._passThrough = true;
+    this._getFakeNode(node)._attached = true;
     return node;
   },
   
