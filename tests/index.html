@@ -48,6 +48,9 @@
         This SVGWeb implementation is not perfect. There are a few bugs
         and what-not to work out still:
         <ul>
+            <li>Resizing the Protovis root panel does not also resize the flash &lt;object>
+            container containing the SVG. To do so, you need to identify and resize the &lt;object>
+            DOM element manually.
             <li>The <code>title</code> property does not work via SVGWeb.
             Use a label instead if possible.
             <li>Completely re-rendering a graph may not work. It
