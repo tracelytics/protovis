@@ -1,18 +1,19 @@
 <html>
   <head>
     <title>Area Chart</title>
+    <script type="text/javascript" src="../../3rdparty/svg.js" data-path="../../3rdparty/"></script>
+    <meta name="svg.render.forceflash" content="true">
     <script type="text/javascript" src="../../protovis-d3.3.js"></script>
   </head>
   <body>
     <script type="text/javascript+protovis">
-
 var data = pv.range(0, 10, .1).map(function(x) {
         return {x: x, y: Math.sin(x) + Math.random() * .5 + 2};
       });
 
 var w = 400,
     h = 200,
-    x = pv.Scale.linear(data, function(d) d.x).range(0, w),
+    x = pv.Scale.linear(data, function(d) { return d.x }).range(0, w),
     y = pv.Scale.linear(0, 4).range(0, h);
 
 var vis = new pv.Panel()
@@ -26,32 +27,31 @@ var vis = new pv.Panel()
 
 vis.add(pv.Rule)
     .data(y.ticks())
-    .visible(function() !(this.index % 2))
+    .visible(function() { return !(this.index % 2) })
     .bottom(y)
     .strokeStyle("#eee")
   .anchor("left").add(pv.Label)
-    .text(function(d) d.toFixed(1));
+  .text(function(d) { return d.toFixed(1) });
 
 vis.add(pv.Rule)
     .data(x.ticks())
-    .visible(function(d) d > 0)
+    .visible(function(d) { return d > 0 })
     .left(x)
     .strokeStyle("#eee")
   .anchor("bottom").add(pv.Label)
-    .text(function(d) d.toFixed());
+  .text(function(d) {return d.toFixed() });
 
 vis.add(pv.Area)
     .data(data)
-    .left(function(d) x(d.x))
+    .left(function(d) { return x(d.x) })
     .bottom(0)
-    .height(function(d) y(d.y))
+    .height(function(d) { return y(d.y) })
     .fillStyle("rgba(31,119,180,.6)")
   .anchor("top")
     .add(pv.Line)
     .lineWidth(3);
 
 vis.render();
-
     </script>
   </body>
 </html>

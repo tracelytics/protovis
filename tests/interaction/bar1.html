@@ -1,0 +1,31 @@
+<html>
+  <head>
+    <title>Area Chart</title>
+    <script type="text/javascript" src="../../3rdparty/svg.js" data-path="../../3rdparty/"></script>
+    <meta name="svg.render.forceflash" content="true">
+    <script type="text/javascript" src="../../protovis-d3.3.js"></script>
+  </head>
+  <body>
+    <script type="text/javascript+protovis">
+var vis = new pv.Panel()
+    .def("i", -1)
+    .width(150)
+    .height(150)
+    .event("mouseout", function() vis.i(-1));
+
+vis.add(pv.Bar)
+    .data([1, 1.2, 1.7, 1.5, .7, .2])
+    .bottom(0)
+    .width(20)
+    .height(function(d) d * 80)
+    .left(function() this.index * 25)
+    .fillStyle(function() vis.i() == this.index ? "orange" : "steelblue")
+    .event("mouseover", function() { if (vis.i() != this.index) { return vis.i(this.index) } } )
+  .anchor("top").add(pv.Label)
+  .visible(function() vis.i() >= 0)
+    .textStyle("white");
+
+vis.render();
+    </script>
+  </body>
+</html>

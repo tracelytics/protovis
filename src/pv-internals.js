@@ -104,6 +104,9 @@ pv.error = function(e) {
  * @param {function} the event handler callback.
  */
 pv.listen = function(target, type, listener) {
+  if (type == 'load' || type == 'onload')
+      return pv.listenForPageLoad (pv.listener(listener));
+
   listener = pv.listener(listener);
   return target.addEventListener
       ? target.addEventListener(type, listener, false)
@@ -142,6 +145,43 @@ pv.ancestor = function(a, e) {
   }
   return false;
 };
+
+/**
+ * Binds to the page ready event in a browser-agnostic
+ * fashion (i.e. that works under IE!)
+ */
+pv.listenForPageLoad = function(listener) {
+
+    // Catch cases where $(document).ready() is called after the
+    // browser event has already occurred.
+    if ( document.readyState === "complete" ) {
+        listener();
+    }
+
+    if (pv.renderer() == "svgweb") {
+        // SVG web adds addEventListener to IE.
+        window.addEventListener( "SVGLoad", listener, false );
+    } else {
+        // Mozilla, Opera and webkit nightlies currently support this event
+        if ( document.addEventListener ) {
+            window.addEventListener( "load", listener, false );
+
+        // If IE event model is used
+        } else if ( document.attachEvent ) {
+            window.attachEvent( "onload", listener );
+        }
+    }
+}
+
+/**
+ * @public Returns the name of the renderer we're using -
+ *
+ * 'nativesvg' is the default - the native svg of the browser.
+ * 'svgweb' is if we identify svgweb is there.
+ */
+pv.renderer = function() {
+    return (typeof window.svgweb === "undefined") ? "nativesvg" : "svgweb";
+}
 
 /** @private Returns a locally-unique positive id. */
 pv.id = function() {

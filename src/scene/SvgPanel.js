@@ -14,20 +14,44 @@ pv.SvgScene.panel = function(scenes) {
         e = g && g.firstChild;
       }
       if (!g) {
-        g = s.canvas.appendChild(this.create("svg"));
+        g = this.create("svg");
         g.setAttribute("font-size", "10px");
         g.setAttribute("font-family", "sans-serif");
         g.setAttribute("fill", "none");
         g.setAttribute("stroke", "none");
         g.setAttribute("stroke-width", 1.5);
-        for (var j = 0; j < this.events.length; j++) {
-          g.addEventListener(this.events[j], this.dispatch, false);
+
+        if (pv.renderer() == "svgweb") { // SVGWeb requires a separate mechanism for setting event listeners.
+            // width/height can't be set on the fragment
+            g.setAttribute("width", s.width + s.left + s.right);
+            g.setAttribute("height", s.height + s.top + s.bottom);
+
+            var frag = document.createDocumentFragment(true);
+
+            g.addEventListener('SVGLoad', function() {
+                this.appendChild(frag);
+                for (var j = 0; j < pv.Scene.events.length; j++) {
+                  this.addEventListener(pv.Scene.events[j], pv.SvgScene.dispatch, false);
+                }
+                scenes.$g = this;
+            }, false);
+
+            svgweb.appendChild (g, s.canvas);
+            g = frag;
+        } else {
+            for (var j = 0; j < this.events.length; j++) {
+              g.addEventListener(this.events[j], this.dispatch, false);
+            }
+            g = s.canvas.appendChild(g);
         }
+
         e = g.firstChild;
       }
       scenes.$g = g;
-      g.setAttribute("width", s.width + s.left + s.right);
-      g.setAttribute("height", s.height + s.top + s.bottom);
+      if (pv.renderer() != 'svgweb') {
+        g.setAttribute("width", s.width + s.left + s.right);
+        g.setAttribute("height", s.height + s.top + s.bottom);
+      }
     }
 
     /* clip (nest children) */

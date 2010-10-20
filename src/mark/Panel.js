@@ -255,7 +255,7 @@ pv.Panel.prototype.buildImplied = function(s) {
     } else {
       var cache = this.$canvas || (this.$canvas = []);
       if (!(c = cache[this.index])) {
-        c = cache[this.index] = document.createElement("span");
+        c = cache[this.index] =  document.createElement(pv.renderer() == "svgweb" ? "div" : "span"); // SVGWeb requires a div, not a span
         if (this.$dom) { // script element for text/javascript+protovis
           this.$dom.parentNode.insertBefore(c, this.$dom);
         } else { // find the last element in the body

@@ -11,8 +11,9 @@ pv.listen(window, "load", function() {
     * could overwrite local variables here (such as the index, `i`)!  To protect
     * against this, all variables are explicitly scoped on a pv.$ object.
     */
-    pv.$ = {i:0, x:document.getElementsByTagName("script")};
-    for (; pv.$.i < pv.$.x.length; pv.$.i++) {
+   pv.$ = {i:0, x:document.getElementsByTagName("script")};
+    pv.$.xlen = pv.$.x.length;
+    for (; pv.$.i < pv.$.xlen; pv.$.i++) {
       pv.$.s = pv.$.x[pv.$.i];
       if (pv.$.s.type == "text/javascript+protovis") {
         try {

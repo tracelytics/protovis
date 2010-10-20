@@ -1,0 +1,181 @@
+<head>
+    <html>
+        <title>Tests</title>
+    </html>
+    <body>
+        <h1>Protovis Tests, Partially Applying SVGWeb</h1>
+
+        This protovis pre-3.2 includes a small number of changes over
+        the top of protovis 3.2 that allow it to work with SVGWeb.
+    <p>
+        You can find a fork of the official Protovis source code
+        with these changes at <a href="http://gitorious.org/~jlove/protovis/jloves-protovis">
+            gitorious</a> (http://gitorious.org/~jlove/protovis/jloves-protovis).
+    <h2>Downloads</h2>
+        Or you can download the necessary files here:
+        <ul>
+            <li>Updated protovis file <a href="../protovis-r3.2.js">production</a>
+            , <a href="../protovis-d3.2.js">test</a></li>
+            <li>The SVGWeb code <a href="../3rdparty/svg.js">svg.js</a> (this
+            includes some small changes to ensure events work in protovis),
+            <a href="../3rdparty/svg.htc">svg.htc</a> and
+            <a href="../3rdparty/svg.swf">svg.swf</a>.
+       </ul>
+
+    <h2>How-To</h2>
+    To make protovis work using SVGWeb, you need to alter your coding
+    style slightly, basically because you need to make it work under IE.
+    Namely:
+        <ul>
+            <li>Conditionally include the SVGWeb <code>svg.js</code> file. You
+            probably don't want to use SVGWeb for non-IE browsers (at least yet).
+            You can do this, by, at the top of your HTML file:
+<pre>
+&lt;!--[if IE]>
+    &lt;script type="text/javascript" src="../../3rdparty/svg.js" data-path="../../3rdparty/">&lt;/script>
+&lt;![endif]-->
+    &lt;script type="text/javascript" src="../../protovis-d3.2.js">&lt;/script>
+</pre>
+            Make sure to you include 'svg.js' first - it MUST be the first
+            javascript file you include. The 'data-path' attribute must reference
+            the directory <code>svg.swf</code> is in.
+            <li>Unless using a script type of <code>text+protovis</code>,
+            don't use function expressions like <code> function () a.b </code>,
+            instead you have to write long form: <code> function () { return a.b; } </code>.
+            This is an IE limitation.
+    </ul>
+    <h2>Bugs using SVGWeb</h2>
+        This SVGWeb implementation is not perfect. There are a few bugs
+        and what-not to work out still:
+        <ul>
+            <li>Resizing the Protovis root panel does not also resize the flash &lt;object>
+            container containing the SVG. To do so, you need to identify and resize the &lt;object>
+            DOM element manually.
+            <li>The <code>title</code> property does not work via SVGWeb.
+            Use a label instead if possible.
+            <li>Completely re-rendering a graph may not work. It
+            seems a little flaky. That is - calling <code>vis.render()</code>
+            on a visualisation previously rendered may or may not work.
+            I'm sure this is fairly simple to fix.<b>upate:</b> This works
+            fine on the polar clock example.
+            <li>Creating a whole new visualistion (by going <code> var vis = new pv.Panel()</code>
+            and rendering to the same div as a previous render may not work.
+            This is to do with the underlying flash object not cleaning up correctly.
+            <li>Text labels with a text size different to the default
+            will have their vertical text-alignment be a little wrong. This is because
+            the flash SVG renderer doesn't understand the concept of 'em' for text
+            offsets.
+            <li>The flash renderer is slower than native rendering, so
+            frequent re-rendering of a graph will easily bog the browser
+            down, and probably won't work (so don't try sub-1s re-rendering).
+            This can be alleviated by only re-rendering child marks on the
+            graph, and longer term we can probably find some performance
+            improvements for it.
+            <li> In SVGWeb, when nodes are rerendered, the re-render
+            can cause SVGWeb to trigger a mouseover event for the
+            newly renderer node. As many graphs re-render the same
+            node, changing color etc, this causes an infinite
+            stream of mouseover events.
+            <p> Therefore, be very careful on how you trigger color/graphical
+            changes on mouseover. Ensure you don't re-render if on mouseover you 
+            get the same index. Also, try and avoid having a mouseout event 
+            on the same mark as the mouseover - instead try and add mouseout to
+            your base panel, and mouseover to your mark (bar chart whatever).
+            <li>The flash renderer doesn't seem to get circle's correct - 
+            see the polar clock for an example. This also occurs in other
+            situations - e.g. see the antibiotics example.
+            <li>Rotated text does not work with SVGWeb. This is due to a known
+            limitation with the Flash SVG rendering. See 
+            <a href="http://code.google.com/p/svgweb/issues/detail?id=158">
+            this SVGWeb bug report</a> for details. Sadly, SVGWeb also does not
+        support SVG fonts referenced via a <code>font-face</code> definition
+        (see <a href="http://code.google.com/p/svgweb/issues/detail?id=288">this
+            SVGWeb issue</a>).
+        </ul>
+
+        <h2>Tests</h2>
+
+    <p>
+
+        The following links are links that have been altered to work with
+        this version of protovis. They have been configured to run SVGWeb
+        in flash on all browsers, so you see what happens using the flash
+        renderer even in FireFox and Chrome.
+    <p>
+            
+<a href="./interaction/bar1.html">./interaction/bar1.html</a><br>
+<a href="./interaction/reverseScale.html">./interaction/reverseScale.html</a><br>
+<a href="./mark/bar-column-grouped.html">./mark/bar-column-grouped.html</a><br>
+<a href="./mark/label-decoration.html">./mark/label-decoration.html</a><br>
+<a href="./mark/cursor.html">./mark/cursor.html</a><br>
+<a href="./mark/area-segmented.html">./mark/area-segmented.html</a><br>
+<a href="./mark/line.html">./mark/line.html</a><br>
+<a href="./mark/bar.html">./mark/bar.html</a><br>
+<a href="./mark/wedge-pie.html">./mark/wedge-pie.html</a><br>
+<a href="./mark/def-type.html">./mark/def-type.html</a><br>
+<a href="./mark/render-partial.html">./mark/render-partial.html</a><br>
+<a href="./mark/bar-column-stacked.html">./mark/bar-column-stacked.html</a><br>
+<a href="./mark/line-fill.html">./mark/line-fill.html</a><br>
+<a href="./mark/area-stacked.html">./mark/area-stacked.html</a><br>
+<a href="./mark/event.html">./mark/event.html</a><br>
+<a href="./mark/line-step.html">./mark/line-step.html</a><br>
+<a href="./mark/area.html">./mark/area.html</a><br>
+<a href="./mark/bar-stacked.html">./mark/bar-stacked.html</a><br>
+<a href="./mark/bar-column.html">./mark/bar-column.html</a><br>
+<a href="./mark/panel-transform.html">./mark/panel-transform.html</a><br>
+<a href="./mark/panel-canvas.html">./mark/panel-canvas.html</a><br>
+<a href="./mark/panel-fill.html">./mark/panel-fill.html</a><br>
+<a href="./mark/line-polar.html">./mark/line-polar.html</a><br>
+<a href="./mark/dot-stroke.html">./mark/dot-stroke.html</a><br>
+<a href="./mark/bar-grouped.html">./mark/bar-grouped.html</a><br>
+<a href="./mark/property-cast.html">./mark/property-cast.html</a><br>
+<a href="./mark/anchor.html">./mark/anchor.html</a><br>
+<a href="./mark/area-anchor-chain.html">./mark/area-anchor-chain.html</a><br>
+<a href="./mark/title.html">./mark/title.html</a><br>
+<a href="./mark/wedge-donut.html">./mark/wedge-donut.html</a><br>
+<a href="./mark/line-segmented.html">./mark/line-segmented.html</a><br>
+<a href="./mark/dot.html">./mark/dot.html</a><br>
+<a href="./examples/antibiotics.html">./examples/antibiotics.html</a><br>
+<a href="./examples/wheat.html">./examples/wheat.html</a><br>
+<a href="./examples/polarclock.html">./examples/polarclock.html</a><br>
+<a href="./data/scale-date.html">./data/scale-date.html</a><br>
+<a href="./layout/cluster-radial2.html">./layout/cluster-radial2.html</a><br>
+<a href="./layout/cluster-radial-group-fill.html">./layout/cluster-radial-group-fill.html</a><br>
+<a href="./layout/partition-fill3.html">./layout/partition-fill3.html</a><br>
+<a href="./layout/cluster2.html">./layout/cluster2.html</a><br>
+<a href="./layout/cluster-fill.html">./layout/cluster-fill.html</a><br>
+<a href="./layout/indent2.html">./layout/indent2.html</a><br>
+<a href="./layout/arc2.html">./layout/arc2.html</a><br>
+<a href="./layout/arc-radial.html">./layout/arc-radial.html</a><br>
+<a href="./layout/arc.html">./layout/arc.html</a><br>
+<a href="./layout/cluster-fill-group.html">./layout/cluster-fill-group.html</a><br>
+<a href="./layout/indent.html">./layout/indent.html</a><br>
+<a href="./layout/partition-fill2.html">./layout/partition-fill2.html</a><br>
+<a href="./layout/partition-fill.html">./layout/partition-fill.html</a><br>
+<a href="./layout/partition-radial-fill.html">./layout/partition-radial-fill.html</a><br>
+<a href="./layout/force3.html">./layout/force3.html</a><br>
+<a href="./layout/force.html">./layout/force.html</a><br>
+<a href="./layout/partition-radial.html">./layout/partition-radial.html</a><br>
+<a href="./layout/partition-radial2.html">./layout/partition-radial2.html</a><br>
+<a href="./layout/tree.html">./layout/tree.html</a><br>
+<a href="./layout/force2.html">./layout/force2.html</a><br>
+<a href="./layout/tree-radial.html">./layout/tree-radial.html</a><br>
+<a href="./layout/partition.html">./layout/partition.html</a><br>
+<a href="./layout/partition-radial-fill2.html">./layout/partition-radial-fill2.html</a><br>
+<a href="./layout/partition-radial-fill3.html">./layout/partition-radial-fill3.html</a><br>
+<a href="./layout/pack.html">./layout/pack.html</a><br>
+<a href="./layout/pack2.html">./layout/pack2.html</a><br>
+<a href="./layout/partition2.html">./layout/partition2.html</a><br>
+<a href="./layout/cluster-radial-fill.html">./layout/cluster-radial-fill.html</a><br>
+<a href="./layout/cluster.html">./layout/cluster.html</a><br>
+<a href="./layout/tree-radial2.html">./layout/tree-radial2.html</a><br>
+<a href="./layout/arc-directed.html">./layout/arc-directed.html</a><br>
+<a href="./layout/tree2.html">./layout/tree2.html</a><br>
+<a href="./layout/cluster-radial.html">./layout/cluster-radial.html</a><br>
+<a href="./physics/dorling.html">./physics/dorling.html</a><br>
+<a href="./physics/simulation.html">./physics/simulation.html</a><br>
+<a href="./text/format-number.html">./text/format-number.html</a><br>
+<a href="./text/format-csv.html">./text/format-csv.html</a><br>
+<a href="./lang/init.html">./lang/init.html</a><br>
+    </body>
+</html>
