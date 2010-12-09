@@ -71,6 +71,10 @@ text += "999.9949\t100\t" + i + "\n";
 i = pv.Format.number().parse(999.9949);
 text += "999.9949\t1000\t" + i + "\n";
 
+i = pv.Format.number().parse(110);
+text += "110\t110\t" + i + "\n";
+
+
 testify(text);
 </script>
   </body>
