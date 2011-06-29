@@ -32,7 +32,8 @@ pv.SvgScene.label = function(scenes) {
             + (this.scale != 1 ? " scale(" + 1 / this.scale + ")" : ""),
         "fill": fill.color,
         "fill-opacity": fill.opacity || null,
-        "text-anchor": anchor
+        "text-anchor": anchor,
+        "class": s.classname || null
       }, {
         "font": s.font,
         "text-shadow": s.textShadow,

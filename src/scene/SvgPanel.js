@@ -33,7 +33,7 @@ pv.SvgScene.panel = function(scenes) {
     /* clip (nest children) */
     if (s.overflow == "hidden") {
       var id = pv.id().toString(36),
-          c = this.expect(e, "g", {"clip-path": "url(#" + id + ")"});
+          c = this.expect(e, "g", {"clip-path": "url(#" + id + ")", "class": s.classname || null});
       if (!c.parentNode) g.appendChild(c);
       scenes.$g = g = c;
       e = c.firstChild;
@@ -44,6 +44,7 @@ pv.SvgScene.panel = function(scenes) {
       r.setAttribute("y", s.top);
       r.setAttribute("width", s.width);
       r.setAttribute("height", s.height);
+      r.setAttribute("class", s.classname || null);
       if (!e.parentNode) g.appendChild(e);
       e = e.nextSibling;
     }
@@ -62,7 +63,8 @@ pv.SvgScene.panel = function(scenes) {
     for (var j = 0; j < s.children.length; j++) {
       s.children[j].$g = e = this.expect(e, "g", {
           "transform": "translate(" + x + "," + y + ")"
-              + (t.k != 1 ? " scale(" + t.k + ")" : "")
+                  + (t.k != 1 ? " scale(" + t.k + ")" : ""),
+          "class": s.classname || null
         });
       this.updateAll(s.children[j]);
       if (!e.parentNode) g.appendChild(e);
@@ -97,7 +99,8 @@ pv.SvgScene.fill = function(e, scenes, i) {
         "height": s.height,
         "fill": fill.color,
         "fill-opacity": fill.opacity,
-        "stroke": null
+        "stroke": null,
+        "class": s.classname || null
       });
     e = this.append(e, scenes, i);
   }
@@ -118,7 +121,8 @@ pv.SvgScene.stroke = function(e, scenes, i) {
         "fill": null,
         "stroke": stroke.color,
         "stroke-opacity": stroke.opacity,
-        "stroke-width": s.lineWidth / this.scale
+        "stroke-width": s.lineWidth / this.scale,
+        "class": s.classname || null
       });
     e = this.append(e, scenes, i);
   }

@@ -214,7 +214,8 @@ pv.Mark.prototype
     .property("title", String)
     .property("reverse", Boolean)
     .property("antialias", Boolean)
-    .property("events", String);
+    .property("events", String)
+    .property("classname", String);
 
 /**
  * The mark type; a lower camelCase name. The type name controls rendering

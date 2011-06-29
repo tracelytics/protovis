@@ -5584,7 +5584,8 @@ pv.SvgScene.area = function(scenes) {
       "fill-opacity": fill.opacity || null,
       "stroke": stroke.color,
       "stroke-opacity": stroke.opacity || null,
-      "stroke-width": stroke.opacity ? s.lineWidth / this.scale : null
+      "stroke-width": stroke.opacity ? s.lineWidth / this.scale : null,
+      "class": s.classname || null
     });
   return this.append(e, scenes, 0);
 };
@@ -5653,7 +5654,8 @@ pv.SvgScene.areaSegment = function(scenes) {
         "fill-opacity": fill.opacity || null,
         "stroke": stroke.color,
         "stroke-opacity": stroke.opacity || null,
-        "stroke-width": stroke.opacity ? s1.lineWidth / this.scale : null
+        "stroke-width": stroke.opacity ? s1.lineWidth / this.scale : null,
+        "class": s.classname || null
       });
     e = this.append(e, scenes, i);
   }
@@ -5681,7 +5683,8 @@ pv.SvgScene.bar = function(scenes) {
         "fill-opacity": fill.opacity || null,
         "stroke": stroke.color,
         "stroke-opacity": stroke.opacity || null,
-        "stroke-width": stroke.opacity ? s.lineWidth / this.scale : null
+        "stroke-width": stroke.opacity ? s.lineWidth / this.scale : null,
+        "class": s.classname || null
       });
     e = this.append(e, scenes, i);
   }
@@ -5751,7 +5754,8 @@ pv.SvgScene.dot = function(scenes) {
       "fill-opacity": fill.opacity || null,
       "stroke": stroke.color,
       "stroke-opacity": stroke.opacity || null,
-      "stroke-width": stroke.opacity ? s.lineWidth / this.scale : null
+      "stroke-width": stroke.opacity ? s.lineWidth / this.scale : null,
+      "class": s.classname || null
     };
     if (path) {
       svg.transform = "translate(" + s.left + "," + s.top + ")";
@@ -5786,7 +5790,8 @@ pv.SvgScene.image = function(scenes) {
           "x": s.left,
           "y": s.top,
           "width": s.width,
-          "height": s.height
+          "height": s.height,
+          "class": s.classname || null
         });
       var c = e.firstChild || e.appendChild(document.createElementNS(this.xhtml, "canvas"));
       c.$scene = {scenes:scenes, index:i};
@@ -5802,7 +5807,8 @@ pv.SvgScene.image = function(scenes) {
           "x": s.left,
           "y": s.top,
           "width": s.width,
-          "height": s.height
+          "height": s.height,
+          "class": s.classname || null
         });
       e.setAttributeNS(this.xlink, "href", s.url);
     }
@@ -5847,7 +5853,8 @@ pv.SvgScene.label = function(scenes) {
             + (this.scale != 1 ? " scale(" + 1 / this.scale + ")" : ""),
         "fill": fill.color,
         "fill-opacity": fill.opacity || null,
-        "text-anchor": anchor
+        "text-anchor": anchor,
+        "class": s.classname || null
       }, {
         "font": s.font,
         "text-shadow": s.textShadow,
@@ -5897,7 +5904,8 @@ pv.SvgScene.line = function(scenes) {
       "stroke": stroke.color,
       "stroke-opacity": stroke.opacity || null,
       "stroke-width": stroke.opacity ? s.lineWidth / this.scale : null,
-      "stroke-linejoin": s.lineJoin
+      "stroke-linejoin": s.lineJoin,
+      "class": s.classname || null
     });
   return this.append(e, scenes, 0);
 };
@@ -5943,7 +5951,8 @@ pv.SvgScene.lineSegment = function(scenes) {
         "stroke": stroke.color,
         "stroke-opacity": stroke.opacity || null,
         "stroke-width": stroke.opacity ? s1.lineWidth / this.scale : null,
-        "stroke-linejoin": s1.lineJoin
+        "stroke-linejoin": s1.lineJoin,
+        "class": s.classname || null
       });
     e = this.append(e, scenes, i);
   }
@@ -6053,7 +6062,7 @@ pv.SvgScene.panel = function(scenes) {
     /* clip (nest children) */
     if (s.overflow == "hidden") {
       var id = pv.id().toString(36),
-          c = this.expect(e, "g", {"clip-path": "url(#" + id + ")"});
+          c = this.expect(e, "g", {"clip-path": "url(#" + id + ")", "class": s.classname || null});
       if (!c.parentNode) g.appendChild(c);
       scenes.$g = g = c;
       e = c.firstChild;
@@ -6064,6 +6073,7 @@ pv.SvgScene.panel = function(scenes) {
       r.setAttribute("y", s.top);
       r.setAttribute("width", s.width);
       r.setAttribute("height", s.height);
+      r.setAttribute("class", s.classname || null);
       if (!e.parentNode) g.appendChild(e);
       e = e.nextSibling;
     }
@@ -6082,7 +6092,8 @@ pv.SvgScene.panel = function(scenes) {
     for (var j = 0; j < s.children.length; j++) {
       s.children[j].$g = e = this.expect(e, "g", {
           "transform": "translate(" + x + "," + y + ")"
-              + (t.k != 1 ? " scale(" + t.k + ")" : "")
+                  + (t.k != 1 ? " scale(" + t.k + ")" : ""),
+          "class": s.classname || null
         });
       this.updateAll(s.children[j]);
       if (!e.parentNode) g.appendChild(e);
@@ -6117,7 +6128,8 @@ pv.SvgScene.fill = function(e, scenes, i) {
         "height": s.height,
         "fill": fill.color,
         "fill-opacity": fill.opacity,
-        "stroke": null
+        "stroke": null,
+        "class": s.classname || null
       });
     e = this.append(e, scenes, i);
   }
@@ -6138,7 +6150,8 @@ pv.SvgScene.stroke = function(e, scenes, i) {
         "fill": null,
         "stroke": stroke.color,
         "stroke-opacity": stroke.opacity,
-        "stroke-width": s.lineWidth / this.scale
+        "stroke-width": s.lineWidth / this.scale,
+        "class": s.classname || null
       });
     e = this.append(e, scenes, i);
   }
@@ -6164,7 +6177,8 @@ pv.SvgScene.rule = function(scenes) {
         "y2": s.top + s.height,
         "stroke": stroke.color,
         "stroke-opacity": stroke.opacity,
-        "stroke-width": s.lineWidth / this.scale
+        "stroke-width": s.lineWidth / this.scale,
+        "class": s.classname || null
       });
     e = this.append(e, scenes, i);
   }
@@ -6230,7 +6244,8 @@ pv.SvgScene.wedge = function(scenes) {
         "fill-opacity": fill.opacity || null,
         "stroke": stroke.color,
         "stroke-opacity": stroke.opacity || null,
-        "stroke-width": stroke.opacity ? s.lineWidth / this.scale : null
+        "stroke-width": stroke.opacity ? s.lineWidth / this.scale : null,
+        "class": s.classname || null
       });
     e = this.append(e, scenes, i);
   }
@@ -6452,7 +6467,8 @@ pv.Mark.prototype
     .property("title", String)
     .property("reverse", Boolean)
     .property("antialias", Boolean)
-    .property("events", String);
+    .property("events", String)
+    .property("classname", String);
 
 /**
  * The mark type; a lower camelCase name. The type name controls rendering

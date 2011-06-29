@@ -16,7 +16,8 @@ pv.SvgScene.image = function(scenes) {
           "x": s.left,
           "y": s.top,
           "width": s.width,
-          "height": s.height
+          "height": s.height,
+          "class": s.classname || null
         });
       var c = e.firstChild || e.appendChild(document.createElementNS(this.xhtml, "canvas"));
       c.$scene = {scenes:scenes, index:i};
@@ -32,7 +33,8 @@ pv.SvgScene.image = function(scenes) {
           "x": s.left,
           "y": s.top,
           "width": s.width,
-          "height": s.height
+          "height": s.height,
+          "class": s.classname || null
         });
       e.setAttributeNS(this.xlink, "href", s.url);
     }
