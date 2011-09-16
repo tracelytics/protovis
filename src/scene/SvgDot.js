@@ -74,7 +74,9 @@ pv.SvgScene.dot = function(scenes) {
       svg.cx = s.left;
       svg.cy = s.top;
       svg.r = radius;
-      e = this.expect(e, "circle", svg);
+      svg.rx = s.radiusx || radius;
+      svg.ry = s.radiusy || radius;
+      e = this.expect(e, "ellipse", svg);
     }
     e = this.append(e, scenes, i);
   }
