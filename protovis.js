@@ -5655,7 +5655,7 @@ pv.SvgScene.areaSegment = function(scenes) {
         "stroke": stroke.color,
         "stroke-opacity": stroke.opacity || null,
         "stroke-width": stroke.opacity ? s1.lineWidth / this.scale : null,
-        "class": s.classname || null
+        "class": s1.classname || null
       });
     e = this.append(e, scenes, i);
   }
@@ -5954,7 +5954,7 @@ pv.SvgScene.lineSegment = function(scenes) {
         "stroke-opacity": stroke.opacity || null,
         "stroke-width": stroke.opacity ? s1.lineWidth / this.scale : null,
         "stroke-linejoin": s1.lineJoin,
-        "class": s.classname || null
+        "class": s1.classname || null
       });
     e = this.append(e, scenes, i);
   }
